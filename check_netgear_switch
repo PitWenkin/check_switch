@@ -1,0 +1,211 @@
+#!/bin/bash
+
+##
+#
+# receive statusinfo from netgear switches
+#
+# you can get all snmp-options with:
+#	snmpwalk -m ALL -v 2c -c MYCOMMUNITY MYIPADDRESS  .1.3.6.1.2.1
+#
+#
+# Usage:
+#	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
+#
+#
+# 2019-07-26:  Version 0.1    \\ Pit Wenkin
+#
+##
+
+SYSUPTIME=0
+SYSCONTACT=''
+SYSNAME=''
+SYSLOCATION=''
+
+
+SNMPVersion="2c"
+SNMPCommunity="public"
+SNMPTimeout="10"
+SNMPPort="161"
+
+
+#OID declarations
+OID_SYSDESCRIPTION="1.3.6.1.2.1.1.1.0"
+OID_SYSOBJECTID="1.3.6.1.2.1.1.2.0"
+OID_SYSUPTIME="1.3.6.1.2.1.1.3.0"
+OID_SYSCONTACT="1.3.6.1.2.1.1.4.0"
+OID_SYSNAME="1.3.6.1.2.1.1.5.0"
+OID_SYSLOCATION="1.3.6.1.2.1.1.6.0"
+OID_SYSSERVICES="1.3.6.1.2.1.1.7.0"
+
+OID_IFOPERSTATUS=".1.3.6.1.2.1.2.2.1.8"
+OID_IFLASTCHANGE=".1.3.6.1.2.1.2.2.1.9"
+
+# nagios return values
+export STATE_OK=0
+export STATE_WARNING=1
+export STATE_CRITICAL=2
+export STATE_UNKNOWN=3
+export STATE_DEPENDENT=4
+
+usage()
+{
+	echo "usage: ./check_netgear_switch -h [hostname] -c [community] -s [status]"
+	echo "options:"
+	echo "	-h [snmp hostname]	Hostname"
+	echo "	-c [community name]	community name (ex: public)"
+	echo "	-p [snmp port]          port for snmp request (default: 161)"
+	echo "	-n [number of ports]	number of physical ports on device"
+	echo "	-o [options]		additional options"
+	echo "	   d				only ports that are down (or anything except up)"
+	echo "	   u				only ports that are up"
+	echo "	-s [check]		Check to be executed"
+	echo "	   info				System infos"
+	echo "	   ports			Listing of ports"
+	echo "	   uptime			System uptime"
+	echo "	-t [timeout]		duration before doing an timeout in seconds - default 10s"
+	echo ""
+	echo "examples:	./check_netgear_switch -h 1.2.3.4 -c public -s info"
+	echo "		./check_netgear_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30"
+	exit 3
+}
+
+if [ "$1" == "--help" ]; then
+	usage; exit 0
+fi
+
+while getopts c:h:n:o:p:s:t: OPTNAME; do
+	case "$OPTNAME" in
+	h)	hostname="$OPTARG";;
+	c)	SNMPCommunity="$OPTARG";;
+	o)	options="$OPTARG";;
+	n)	ports="$OPTARG";;
+	p)	SNMPPort="$OPTARG";;
+	s)	status="$OPTARG";;
+	t)	SNMPTimeout="$OPTARG";;
+	esac
+done
+
+function up_time {
+	time=$1
+	pre=$2;
+	suf=$3
+	#returns uptime as human readable string
+	if [[ $time =~ (.*):(.*):(.*):(.*)\.(.*) ]]; then
+		DAYS=${BASH_REMATCH[1]}
+                HOURS=${BASH_REMATCH[2]}
+                MINUTES=${BASH_REMATCH[3]}
+                SECONDS=${BASH_REMATCH[4]}
+                MILLISECONDS=${BASH_REMATCH[5]}
+
+                output=$output"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"
+                if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
+                        intReturn=$STATE_CRITICAL
+                else
+                        if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
+                                intReturn=$STATE_WARNING
+                        else
+                                intReturn=$STATE_OK
+                        fi
+                fi
+        fi
+}
+
+
+if [ "$hostname" = "" ] || [ "$SNMPCommunity" = "" ] ; then
+	usage
+else
+	SNMPArgs=" -OQne -v $SNMPVersion -c $SNMPCommunity -t $SNMPTimeout $hostname:$SNMPPort"
+
+	case "$status" in
+
+		info)
+			info=`snmpget $SNMPArgs $OID_SYSDESCRIPTION $OID_SYSUPTIME $OID_SYSCONTACT $OID_SYSNAME $OID_SYSLOCATION 2> /dev/null`
+			if [ "$?" != "0" ] ; then
+				output="CRITICAL - Problem with SNMP request, check user/password/host"
+				intReturn=$STATE_CRITICAL ;
+			else
+
+			    	SYSDESCRIPTION=$(echo "$info" | grep $OID_SYSDESCRIPTION | sed 's/.* = //g' | sed 's/"//g')
+			    	SYSUPTIME=$(echo "$info" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
+			    	SYSCONTACT=$(echo "$info" | grep $OID_SYSCONTACT | sed 's/.* = //g' | sed 's/"//g')
+			    	SYSNAME=$(echo "$info" | grep $OID_SYSNAME | sed 's/.* = //g' | sed 's/"//g')
+			    	SYSLOCATION=$(echo "$info" | grep $OID_SYSLOCATION | sed 's/.* = //g' | sed 's/"//g')
+
+				if [ "$SYSDESCRIPTION" != "" ] ; then
+					output="Description - $SYSDESCRIPTION\n"
+				fi
+                                if [ "$SYSUPTIME" != "" ] ; then
+                                        up_time $SYSUPTIME 'Uptime - '
+					output=$output"\n"
+                                fi
+                                if [ "$SYSCONTACT" != "" ] ; then
+                                        output=$output"Contact - $SYSCONTACT\n"
+                                fi
+                                if [ "$SYSNAME" != "" ] ; then
+                                        output=$output"Name - $SYSNAME\n"
+                                fi
+                                if [ "$SYSLOCATION" != "" ] ; then
+                                        output=$output"Location - $SYSLOCATION"
+                                fi
+				if [ "$output" == "" ] ; then
+					output="No information returned"
+					intReturn=$STATE_WARNING
+				fi
+			fi
+		;;
+
+		ports)
+			if [ "$ports" == "" ] ; then
+				output="Please define number of ports";
+                                intReturn=$STATE_UNKNOWN;
+			else
+				for i in `seq 1 $ports`;
+				do
+					OID_PORTSTATUS="$OID_PORTSTATUS $OID_IFOPERSTATUS.$i $OID_IFLASTCHANGE.$i "
+				done
+				PORTSTATUS=`snmpget $SNMPArgs $OID_PORTSTATUS`
+				if [ "$?" != "0" ] ; then
+					output="CRITICAL - Problem with SNMP request, check user/password/host"
+					intReturn=$STATE_CRITICAL;
+				else
+					for i in `seq 1 $ports`;
+					do
+					        portStatus[$i]=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((i)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
+						portChange[$i]=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((i)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
+						case ${portStatus[$i]} in
+							"1") portText[$i]="Up";			;;
+							"2") portText[$i]="Down";		;;
+							"3") portText[$i]="Testing";		;;
+							"4") portText[$i]="Unknown";		;;
+							"5") portText[$i]="Dormant";		;;
+							"6") portText[$i]="Not present";	;;
+							"7") portText[$i]="Lower layer down";	;;
+						esac
+
+						if [ \( "$options" = "" \) -o \( "$options" = "u" -a "${portStatus[$i]}" = "1" \) -o \( "$options" = "d" -a "${portStatus[$i]}" != "1" \) ] ; then
+							output=$output"Port $i - ${portText[$i]}\t";
+							up_time ${portChange[$i]} '(since ' " ago)\n";
+						fi
+					done
+				fi
+			fi
+		;;
+
+		uptime)
+			SYSUPTIME=`snmpget $SNMPArgs $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g'`
+			if [ "$?" != "0" ] ; then
+				output="CRITICAL - Problem with SNMP request, check user/password/host";
+				intReturn=$STATE_CRITICAL;
+			else
+				up_time $SYSUPTIME 'Uptime - '
+			fi
+		;;
+
+		*)
+			usage; exit 0
+		;;
+	esac
+
+	echo -e $output
+	exit $intReturn
+fi
