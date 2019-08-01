@@ -12,7 +12,7 @@
 #	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2019-07-26:  Version 0.1    \\ Pit Wenkin
+# 2019-08-01:  Version 1    \\ Pit Wenkin
 #
 ##
 
@@ -54,7 +54,7 @@ usage()
 	echo "	-h [snmp hostname]	Hostname"
 	echo "	-c [community name]	community name (ex: public)"
 	echo "	-p [snmp port]          port for snmp request (default: 161)"
-	echo "	-P [port]		port to check ("
+	echo "	-P [port]		port to check"
 	echo "	-n [number of ports]	number of physical ports on device"
 	echo "	-o [options]		additional options"
 	echo "	   d				only ports that are down (or anything except up)"
@@ -68,6 +68,8 @@ usage()
 	echo ""
 	echo "examples:	./check_netgear_switch -h 1.2.3.4 -c public -s info"
 	echo "		./check_netgear_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30"
+	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s ports -n 28"
+	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s port -P 1"
 	exit 3
 }
 
