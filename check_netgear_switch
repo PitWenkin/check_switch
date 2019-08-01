@@ -12,7 +12,7 @@
 #	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2019-07-26:  Version 0.1    \\ Pit Wenkin
+# 2019-08-01:  Version 1    \\ Pit Wenkin
 #
 ##
 
@@ -54,18 +54,22 @@ usage()
 	echo "	-h [snmp hostname]	Hostname"
 	echo "	-c [community name]	community name (ex: public)"
 	echo "	-p [snmp port]          port for snmp request (default: 161)"
+	echo "	-P [port]		port to check"
 	echo "	-n [number of ports]	number of physical ports on device"
 	echo "	-o [options]		additional options"
 	echo "	   d				only ports that are down (or anything except up)"
 	echo "	   u				only ports that are up"
 	echo "	-s [check]		Check to be executed"
 	echo "	   info				System infos"
-	echo "	   ports			Listing of ports"
+	echo "	   port				Check statius specific port ('P' option)"
+	echo "	   ports			Listing of ports ('n' option defines number of port to check)"
 	echo "	   uptime			System uptime"
 	echo "	-t [timeout]		duration before doing an timeout in seconds - default 10s"
 	echo ""
 	echo "examples:	./check_netgear_switch -h 1.2.3.4 -c public -s info"
 	echo "		./check_netgear_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30"
+	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s ports -n 28"
+	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s port -P 1"
 	exit 3
 }
 
@@ -73,13 +77,14 @@ if [ "$1" == "--help" ]; then
 	usage; exit 0
 fi
 
-while getopts c:h:n:o:p:s:t: OPTNAME; do
+while getopts c:h:n:o:p:P:s:t: OPTNAME; do
 	case "$OPTNAME" in
 	h)	hostname="$OPTARG";;
 	c)	SNMPCommunity="$OPTARG";;
 	o)	options="$OPTARG";;
 	n)	ports="$OPTARG";;
 	p)	SNMPPort="$OPTARG";;
+	P)	port="$OPTARG";;
 	s)	status="$OPTARG";;
 	t)	SNMPTimeout="$OPTARG";;
 	esac
@@ -187,6 +192,36 @@ else
 							up_time ${portChange[$i]} '(since ' " ago)\n";
 						fi
 					done
+					intReturn=$STATE_OK;
+				fi
+			fi
+		;;
+
+
+		port)
+			if [ "$port" == "" ] ; then
+				output="Please define port to check";
+                                intReturn=$STATE_UNKNOWN;
+			else
+				PORTSTATUS=`snmpget $SNMPArgs $OID_IFOPERSTATUS.$port $OID_IFLASTCHANGE.$port`
+				if [ "$?" != "0" ] ; then
+					output="CRITICAL - Problem with SNMP request, check user/password/host"
+					intReturn=$STATE_CRITICAL;
+				else
+					portStatus=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((port)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
+					portChange=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((port)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
+					case $portStatus in
+						"1") portText="Up";			intReturn=$STATE_OK;;
+						"2") portText="Down";			intReturn=$STATE_CRITICAL;;
+						"3") portText="Testing";		intReturn=$STATE_WARNING;;
+						"4") portText="Unknown";		intReturn=$STATE_UNKNOWN;;
+						"5") portText="Dormant";		intReturn=$STATE_CRITICAL;;
+						"6") portText="Not present";		intReturn=$STATE_CRITICAL;;
+						"7") portText="Lower layer down";	intReturn=$STATE_CRITICAL;;
+					esac
+
+					output=$output"Port $port - $portText\t";
+					up_time $portChange '(since ' " ago)\n";
 				fi
 			fi
 		;;
