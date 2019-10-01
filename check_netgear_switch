@@ -12,7 +12,7 @@
 #	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2019-08-01:  Version 1    \\ Pit Wenkin
+# 2019-09-24:  Version 1.1	\\ Pit Wenkin
 #
 ##
 
@@ -97,22 +97,59 @@ function up_time {
 	#returns uptime as human readable string
 	if [[ $time =~ (.*):(.*):(.*):(.*)\.(.*) ]]; then
 		DAYS=${BASH_REMATCH[1]}
-                HOURS=${BASH_REMATCH[2]}
-                MINUTES=${BASH_REMATCH[3]}
-                SECONDS=${BASH_REMATCH[4]}
-                MILLISECONDS=${BASH_REMATCH[5]}
+		HOURS=${BASH_REMATCH[2]}
+		MINUTES=${BASH_REMATCH[3]}
+		SECONDS=${BASH_REMATCH[4]}
+		MILLISECONDS=${BASH_REMATCH[5]}
 
-                output=$output"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"
-                if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
-                        intReturn=$STATE_CRITICAL
-                else
-                        if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
-                                intReturn=$STATE_WARNING
-                        else
-                                intReturn=$STATE_OK
-                        fi
-                fi
-        fi
+		output=$output"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"
+		if [ $intReturn == $STATE_OK ]; then
+			if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
+				intReturn=$STATE_CRITICAL
+			else
+				if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
+					intReturn=$STATE_WARNING
+				fi
+			fi
+		fi
+	fi
+}
+
+function get_timestamp {
+	t=$1
+	if [[ $t =~ (.*):(.*):(.*):(.*)\.(.*) ]]; then
+		DAYS=${BASH_REMATCH[1]}
+		HOURS=${BASH_REMATCH[2]}
+		MINUTES=${BASH_REMATCH[3]}
+		SECONDS=${BASH_REMATCH[4]}
+		MILLISECONDS=${BASH_REMATCH[5]}
+		
+		ALL=$((10#$DAYS*24*60*60*1000 + 10#$HOURS*60*60*1000 + 10#$MINUTES*60*1000 + 10#$SECONDS*1000 + 10#$MILLISECONDS))
+		echo $ALL
+	fi
+	
+}
+
+function sub_time {
+	t1=$1
+	t2=$2;
+	#substracts one uptime from another
+	T1ALL=$(get_timestamp $t1)
+	T2ALL=$(get_timestamp $t2)
+	if [[ T1ALL != '' && T2ALL != '' ]]; then
+		TS=$((T1ALL - T2ALL))
+		DAYS=$(($TS/(24*60*60*1000)))
+		TS=$(($TS-($DAYS*24*60*60*1000)))
+		HOURS=$(($TS/(60*60*1000)))
+		TS=$(($TS-($HOURS*60*60*1000)))
+		MINUTES=$(($TS/(60*1000)))
+		TS=$(($TS-($MINUTES*60*1000)))
+		SECONDS=$(($TS/(1000)))
+		MILLSECONDS=$(($TS-$SECONDS))
+		echo "$DAYS:$HOURS:$MINUTES:$SECONDS.$MILLISECONDS"
+	else
+		echo 'ERROR'
+	fi
 }
 
 
@@ -130,28 +167,28 @@ else
 				intReturn=$STATE_CRITICAL ;
 			else
 
-			    	SYSDESCRIPTION=$(echo "$info" | grep $OID_SYSDESCRIPTION | sed 's/.* = //g' | sed 's/"//g')
-			    	SYSUPTIME=$(echo "$info" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
-			    	SYSCONTACT=$(echo "$info" | grep $OID_SYSCONTACT | sed 's/.* = //g' | sed 's/"//g')
-			    	SYSNAME=$(echo "$info" | grep $OID_SYSNAME | sed 's/.* = //g' | sed 's/"//g')
-			    	SYSLOCATION=$(echo "$info" | grep $OID_SYSLOCATION | sed 's/.* = //g' | sed 's/"//g')
+				SYSDESCRIPTION=$(echo "$info" | grep $OID_SYSDESCRIPTION | sed 's/.* = //g' | sed 's/"//g')
+				SYSUPTIME=$(echo "$info" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
+				SYSCONTACT=$(echo "$info" | grep $OID_SYSCONTACT | sed 's/.* = //g' | sed 's/"//g')
+				SYSNAME=$(echo "$info" | grep $OID_SYSNAME | sed 's/.* = //g' | sed 's/"//g')
+				SYSLOCATION=$(echo "$info" | grep $OID_SYSLOCATION | sed 's/.* = //g' | sed 's/"//g')
 
 				if [ "$SYSDESCRIPTION" != "" ] ; then
 					output="Description - $SYSDESCRIPTION\n"
 				fi
-                                if [ "$SYSUPTIME" != "" ] ; then
-                                        up_time $SYSUPTIME 'Uptime - '
+				if [ "$SYSUPTIME" != "" ] ; then
+					up_time $SYSUPTIME 'Uptime - '
 					output=$output"\n"
-                                fi
-                                if [ "$SYSCONTACT" != "" ] ; then
-                                        output=$output"Contact - $SYSCONTACT\n"
-                                fi
-                                if [ "$SYSNAME" != "" ] ; then
-                                        output=$output"Name - $SYSNAME\n"
-                                fi
-                                if [ "$SYSLOCATION" != "" ] ; then
-                                        output=$output"Location - $SYSLOCATION"
-                                fi
+				fi
+				if [ "$SYSCONTACT" != "" ] ; then
+					output=$output"Contact - $SYSCONTACT\n"
+				fi
+				if [ "$SYSNAME" != "" ] ; then
+					output=$output"Name - $SYSNAME\n"
+				fi
+				if [ "$SYSLOCATION" != "" ] ; then
+					output=$output"Location - $SYSLOCATION"
+				fi
 				if [ "$output" == "" ] ; then
 					output="No information returned"
 					intReturn=$STATE_WARNING
@@ -162,20 +199,21 @@ else
 		ports)
 			if [ "$ports" == "" ] ; then
 				output="Please define number of ports";
-                                intReturn=$STATE_UNKNOWN;
+				intReturn=$STATE_UNKNOWN;
 			else
 				for i in `seq 1 $ports`;
 				do
 					OID_PORTSTATUS="$OID_PORTSTATUS $OID_IFOPERSTATUS.$i $OID_IFLASTCHANGE.$i "
 				done
-				PORTSTATUS=`snmpget $SNMPArgs $OID_PORTSTATUS`
+				PORTSTATUS=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_PORTSTATUS`
 				if [ "$?" != "0" ] ; then
 					output="CRITICAL - Problem with SNMP request, check user/password/host"
 					intReturn=$STATE_CRITICAL;
 				else
+					SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
 					for i in `seq 1 $ports`;
 					do
-					        portStatus[$i]=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((i)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
+						portStatus[$i]=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((i)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
 						portChange[$i]=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((i)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
 						case ${portStatus[$i]} in
 							"1") portText[$i]="Up";			;;
@@ -189,7 +227,8 @@ else
 
 						if [ \( "$options" = "" \) -o \( "$options" = "u" -a "${portStatus[$i]}" = "1" \) -o \( "$options" = "d" -a "${portStatus[$i]}" != "1" \) ] ; then
 							output=$output"Port $i - ${portText[$i]}\t";
-							up_time ${portChange[$i]} '(since ' " ago)\n";
+							portUptime=$(sub_time $SYSUPTIME ${portChange[$i]})
+							up_time $portUptime '(since ' " ago)\n";
 						fi
 					done
 					intReturn=$STATE_OK;
@@ -201,15 +240,16 @@ else
 		port)
 			if [ "$port" == "" ] ; then
 				output="Please define port to check";
-                                intReturn=$STATE_UNKNOWN;
+				intReturn=$STATE_UNKNOWN;
 			else
-				PORTSTATUS=`snmpget $SNMPArgs $OID_IFOPERSTATUS.$port $OID_IFLASTCHANGE.$port`
+				PORTSTATUS=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_IFOPERSTATUS.$port $OID_IFLASTCHANGE.$port`
 				if [ "$?" != "0" ] ; then
 					output="CRITICAL - Problem with SNMP request, check user/password/host"
 					intReturn=$STATE_CRITICAL;
 				else
 					portStatus=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((port)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
 					portChange=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((port)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
+					SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
 					case $portStatus in
 						"1") portText="Up";			intReturn=$STATE_OK;;
 						"2") portText="Down";			intReturn=$STATE_CRITICAL;;
@@ -221,7 +261,8 @@ else
 					esac
 
 					output=$output"Port $port - $portText\t";
-					up_time $portChange '(since ' " ago)\n";
+					portUptime=$(sub_time $SYSUPTIME $portChange)
+					up_time $portUptime '(since ' " ago)\n";
 				fi
 			fi
 		;;
