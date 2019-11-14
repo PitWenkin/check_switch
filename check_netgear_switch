@@ -12,7 +12,7 @@
 #	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2019-09-24:  Version 1.1	\\ Pit Wenkin
+# 2019-11-14:  Version 1.2	\\ Pit Wenkin
 #
 ##
 
@@ -233,7 +233,6 @@ else
 							up_time $portUptime '(since ' " ago)\n";
 						fi
 					done
-					intReturn=$STATE_OK;
 				fi
 			fi
 		;;
