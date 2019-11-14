@@ -47,6 +47,8 @@ export STATE_CRITICAL=2
 export STATE_UNKNOWN=3
 export STATE_DEPENDENT=4
 
+intReturn=$STATE_OK
+
 usage()
 {
 	echo "usage: ./check_netgear_switch -h [hostname] -c [community] -s [status]"
