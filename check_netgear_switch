@@ -12,7 +12,7 @@
 #	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2019-11-14:  Version 1.2	\\ Pit Wenkin
+# 2020-02-18:  Version 1.3	\\ Pit Wenkin
 #
 ##
 
@@ -94,8 +94,9 @@ done
 
 function up_time {
 	time=$1
-	pre=$2;
+	pre=$2
 	suf=$3
+	up=$4
 	#returns uptime as human readable string
 	if [[ $time =~ (.*):(.*):(.*):(.*)\.(.*) ]]; then
 		DAYS=${BASH_REMATCH[1]}
@@ -107,9 +108,15 @@ function up_time {
 		output=$output"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"
 		if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
 			intReturn=$STATE_CRITICAL
+			if [ "$up" != '' ]; then
+				output=$up"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"$output
+			fi
 		else
 			if [ $intReturn -lt $STATE_CRITICAL ] && [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
 				intReturn=$STATE_WARNING
+				if [ "$up" != '' ]; then
+					output=$up"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"$output
+				fi
 			fi
 		fi
 	fi
@@ -228,7 +235,7 @@ else
 						if [ \( "$options" = "" \) -o \( "$options" = "u" -a "${portStatus[$i]}" = "1" \) -o \( "$options" = "d" -a "${portStatus[$i]}" != "1" \) ] ; then
 							output=$output"Port $i - ${portText[$i]}\t";
 							portUptime=$(sub_time $SYSUPTIME ${portChange[$i]})
-							up_time $portUptime '(since ' " ago)\n";
+							up_time $portUptime '(since ' " ago)\n" "Port $i - ${portText[$i]}\t";
 						fi
 					done
 				fi
