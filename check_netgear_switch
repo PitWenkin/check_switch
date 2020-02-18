@@ -105,13 +105,11 @@ function up_time {
 		MILLISECONDS=${BASH_REMATCH[5]}
 
 		output=$output"$pre$DAYS days $HOURS hours $MINUTES minutes$suf"
-		if [ $intReturn == $STATE_OK ]; then
-			if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
-				intReturn=$STATE_CRITICAL
-			else
-				if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
-					intReturn=$STATE_WARNING
-				fi
+		if [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "5" ]; then
+			intReturn=$STATE_CRITICAL
+		else
+			if [ $intReturn -lt $STATE_CRITICAL ] && [ $DAYS == "0" ] && [ $HOURS == "0" ] && [ $MINUTES -lt "15" ]; then
+				intReturn=$STATE_WARNING
 			fi
 		fi
 	fi
