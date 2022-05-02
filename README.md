@@ -1,11 +1,13 @@
-# Check NETGEAR Switch
-Nagios/Icinga script to check NETGEAR switches
+# Check Switch
+Nagios/Icinga script to check switches from NETGEAR or LANCOM
 
-Used to check NETGEAR switches https://www.netgear.com
+Used to check switches  from
+- NETGEAR https://www.netgear.com
+- LANCOM https://www.lancom-systems.de
 
 # Usage:
 ```
-./check_netgear_switch -h [hostname] -c [community] -s [status]
+./check_switch -h [hostname] -c [community] -s [status]
 ```
 
 # Options:
@@ -28,8 +30,8 @@ Used to check NETGEAR switches https://www.netgear.com
 
 # Examples:
 ```
-  ./check_netgear_switch -h 1.2.3.4 -c public -s info
-  ./check_netgear_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30
-  ./check_netgear_switch -h 1.2.3.4 -c public -s ports -n 28
-  ./check_netgear_switch -h 1.2.3.4 -c public -s port -P 1
+  ./check_switch -h 1.2.3.4 -c public -s info
+  ./check_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30
+  ./check_switch -h 1.2.3.4 -c public -s ports -n 28
+  ./check_switch -h 1.2.3.4 -c public -s port -P 1
 ```

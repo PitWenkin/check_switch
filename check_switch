@@ -2,17 +2,17 @@
 
 ##
 #
-# receive statusinfo from netgear switches
+# receive statusinfo of switches from netgear or lancom
 #
 # you can get all snmp-options with:
 #	snmpwalk -m ALL -v 2c -c MYCOMMUNITY MYIPADDRESS  .1.3.6.1.2.1
 #
 #
 # Usage:
-#	./check_netgear_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
+#	./check_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2020-02-18:  Version 1.3	\\ Pit Wenkin
+# 2022-04-29:  Version 1.4	\\ Pit Wenkin
 #
 ##
 
@@ -51,7 +51,7 @@ intReturn=$STATE_OK
 
 usage()
 {
-	echo "usage: ./check_netgear_switch -h [hostname] -c [community] -s [status]"
+	echo "usage: ./check_switch -h [hostname] -c [community] -s [status]"
 	echo "options:"
 	echo "	-h [snmp hostname]	Hostname"
 	echo "	-c [community name]	community name (ex: public)"
@@ -68,10 +68,10 @@ usage()
 	echo "	   uptime			System uptime"
 	echo "	-t [timeout]		duration before doing an timeout in seconds - default 10s"
 	echo ""
-	echo "examples:	./check_netgear_switch -h 1.2.3.4 -c public -s info"
-	echo "		./check_netgear_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30"
-	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s ports -n 28"
-	echo "		./check_netgear_switch -h 1.2.3.4 -c public -s port -P 1"
+	echo "examples:	./check_switch -h 1.2.3.4 -c public -s info"
+	echo "		./check_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30"
+	echo "		./check_switch -h 1.2.3.4 -c public -s ports -n 28"
+	echo "		./check_switch -h 1.2.3.4 -c public -s port -P 1"
 	exit 3
 }
 
