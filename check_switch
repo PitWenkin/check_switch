@@ -209,45 +209,32 @@ else
 				intReturn=$STATE_UNKNOWN;
 			else
 				ERRMSG=""
-				MAXCOUNT=$(($ports+23))
-				MAXCOUNT=$(($MAXCOUNT/24))
-				START=1
-				for i in `seq 1 $MAXCOUNT`;
-				do
-					OID_PORTSTATUS=""
-					for j in `seq $START $(($i*24))`;
+				PORTSTATUSA[0]=`snmpget $SNMPArgs $OID_SYSUPTIME`
+				if [ "$?" != "0" ] ; then
+					ERRMSG="CRITICAL - Problem with SNMP request, check user/password/host"
+				else
+					for i in `seq 1 $ports`;
 					do
-						if [ $j -gt $ports ]; then
+						PORTSTATUSA[$i]=`snmpget $SNMPArgs $OID_IFOPERSTATUS.$i $OID_IFLASTCHANGE.$i`
+						if [ "$?" != "0" ] ; then
+							ERRMSG="CRITICAL - Problem with SNMP request for ports $i, check user/password/host"
 							break
 						fi
-						OID_PORTSTATUS="$OID_PORTSTATUS $OID_IFOPERSTATUS.$j $OID_IFLASTCHANGE.$j "
-					done
-					if [ "$i" == 1 ] ; then
-						PORTSTATUSA[$i]=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_PORTSTATUS`
-					else
-						PORTSTATUSA[$i]=`snmpget $SNMPArgs $OID_PORTSTATUS`
-					fi
-					if [ "$?" != "0" ] ; then
-						ERRMSG="CRITICAL - Problem with SNMP request for ports ((($i-1)*24)+1)-($i*24), check user/password/host"
-						break
-					fi
-					START=$((($i*24)+1))
-				done
-				if [ "$ERRMSG" == "" ] ; then
-					PORTSTATUS=""
-					for i in ${!PORTSTATUSA[@]};
-					do
-						if [ "$i" -gt 1 ] ; then
-							NEWLINE=$'\n'
-							PORTSTATUS="${PORTSTATUS}${NEWLINE}"
-						fi
-						PORTSTATUS="$PORTSTATUS ${PORTSTATUSA[$i]}"
 					done
 				fi
 				if [ "$ERRMSG" != "" ] ; then
 					output="$ERRMSG"
 					intReturn=$STATE_CRITICAL;
 				else
+					PORTSTATUS=""
+					for i in ${!PORTSTATUSA[@]};
+					do
+						if [ "$i" -gt 0 ] ; then
+							NEWLINE=$'\n'
+							PORTSTATUS="${PORTSTATUS}${NEWLINE}"
+						fi
+						PORTSTATUS="$PORTSTATUS ${PORTSTATUSA[$i]}"
+					done
 					SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
 					for i in `seq 1 $ports`;
 					do
@@ -261,6 +248,7 @@ else
 							"5") portText[$i]="Dormant";		;;
 							"6") portText[$i]="Not present";	;;
 							"7") portText[$i]="Lower layer down";	;;
+							"No Such Instance currently exists at this OID") portText[$i]="Not present";   ;;
 						esac
 
 						if [ \( "$options" = "" \) -o \( "$options" = "u" -a "${portStatus[$i]}" = "1" \) -o \( "$options" = "d" -a "${portStatus[$i]}" != "1" \) ] ; then
