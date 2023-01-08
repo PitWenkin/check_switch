@@ -12,7 +12,7 @@
 #	./check_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2022-04-29:  Version 1.4	\\ Pit Wenkin
+# 2022-11-16:  Version 1.5	\\ Pit Wenkin
 #
 ##
 
@@ -208,15 +208,33 @@ else
 				output="Please define number of ports";
 				intReturn=$STATE_UNKNOWN;
 			else
-				for i in `seq 1 $ports`;
-				do
-					OID_PORTSTATUS="$OID_PORTSTATUS $OID_IFOPERSTATUS.$i $OID_IFLASTCHANGE.$i "
-				done
-				PORTSTATUS=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_PORTSTATUS`
+				ERRMSG=""
+				PORTSTATUSA[0]=`snmpget $SNMPArgs $OID_SYSUPTIME`
 				if [ "$?" != "0" ] ; then
-					output="CRITICAL - Problem with SNMP request, check user/password/host"
+					ERRMSG="CRITICAL - Problem with SNMP request, check user/password/host"
+				else
+					for i in `seq 1 $ports`;
+					do
+						PORTSTATUSA[$i]=`snmpget $SNMPArgs $OID_IFOPERSTATUS.$i $OID_IFLASTCHANGE.$i`
+						if [ "$?" != "0" ] ; then
+							ERRMSG="CRITICAL - Problem with SNMP request for ports $i, check user/password/host"
+							break
+						fi
+					done
+				fi
+				if [ "$ERRMSG" != "" ] ; then
+					output="$ERRMSG"
 					intReturn=$STATE_CRITICAL;
 				else
+					PORTSTATUS=""
+					for i in ${!PORTSTATUSA[@]};
+					do
+						if [ "$i" -gt 0 ] ; then
+							NEWLINE=$'\n'
+							PORTSTATUS="${PORTSTATUS}${NEWLINE}"
+						fi
+						PORTSTATUS="$PORTSTATUS ${PORTSTATUSA[$i]}"
+					done
 					SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
 					for i in `seq 1 $ports`;
 					do
@@ -230,6 +248,7 @@ else
 							"5") portText[$i]="Dormant";		;;
 							"6") portText[$i]="Not present";	;;
 							"7") portText[$i]="Lower layer down";	;;
+							"No Such Instance currently exists at this OID") portText[$i]="Not present";   ;;
 						esac
 
 						if [ \( "$options" = "" \) -o \( "$options" = "u" -a "${portStatus[$i]}" = "1" \) -o \( "$options" = "d" -a "${portStatus[$i]}" != "1" \) ] ; then
