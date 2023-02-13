@@ -34,5 +34,5 @@ Used to check switches  from
   ./check_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30
   ./check_switch -h 1.2.3.4 -c public -s ports -n 28
   ./check_switch -h 1.2.3.4 -c public -s port -P 1
-  ./check_switch -h 1.2.3.4 -c public -s port -P 1,25 #Checks port 1 and 25
+  ./check_switch -h 1.2.3.4 -c public -s port -P 1,25 #Check port 1 and 25
 ```
