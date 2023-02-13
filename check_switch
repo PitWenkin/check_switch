@@ -268,7 +268,6 @@ else
 				intReturn=$STATE_UNKNOWN;
 			else
 				ports=(${port//,/ })
-				echo ${ports[1]}
 				for port in "${ports[@]}"
 				do
 				: 
