@@ -267,28 +267,39 @@ else
 				output="Please define port to check";
 				intReturn=$STATE_UNKNOWN;
 			else
-				PORTSTATUS=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_IFOPERSTATUS.$port $OID_IFLASTCHANGE.$port`
-				if [ "$?" != "0" ] ; then
-					output="CRITICAL - Problem with SNMP request, check user/password/host"
-					intReturn=$STATE_CRITICAL;
-				else
-					portStatus=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((port)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
-					portChange=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((port)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
-					SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
-					case $portStatus in
-						"1") portText="Up";			intReturn=$STATE_OK;;
-						"2") portText="Down";			intReturn=$STATE_CRITICAL;;
-						"3") portText="Testing";		intReturn=$STATE_WARNING;;
-						"4") portText="Unknown";		intReturn=$STATE_UNKNOWN;;
-						"5") portText="Dormant";		intReturn=$STATE_CRITICAL;;
-						"6") portText="Not present";		intReturn=$STATE_CRITICAL;;
-						"7") portText="Lower layer down";	intReturn=$STATE_CRITICAL;;
-					esac
+				ports=(${port//,/ })
+				echo ${ports[1]}
+				for port in "${ports[@]}"
+				do
+				: 
+					PORTSTATUS=`snmpget $SNMPArgs $OID_SYSUPTIME $OID_IFOPERSTATUS.$port $OID_IFLASTCHANGE.$port`
+					if [ "$?" != "0" ] ; then
+						output="CRITICAL - Problem with SNMP request, check user/password/host"
+						intReturn=$STATE_CRITICAL;
+					else
+						portStatus=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((port)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
+						portChange=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((port)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
+						SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
+						case $portStatus in
+							"1") portText="Up";			thisReturn=$STATE_OK;;
+							"2") portText="Down";			thisReturn=$STATE_CRITICAL;;
+							"3") portText="Testing";		thisReturn=$STATE_WARNING;;
+							"4") portText="Unknown";		thisReturn=$STATE_UNKNOWN;;
+							"5") portText="Dormant";		thisReturn=$STATE_CRITICAL;;
+							"6") portText="Not present";		thisReturn=$STATE_CRITICAL;;
+							"7") portText="Lower layer down";	thisReturn=$STATE_CRITICAL;;
+						esac
 
-					output=$output"Port $port - $portText\t";
-					portUptime=$(sub_time $SYSUPTIME $portChange)
-					up_time $portUptime '(since ' " ago)\n";
-				fi
+						if [ $intReturn -lt $thisReturn ] ; then
+							intReturn=$thisReturn
+						fi
+
+						output=$output"Port $port - $portText\t";
+						portUptime=$(sub_time $SYSUPTIME $portChange)
+						up_time $portUptime '(since ' " ago)\n";
+					fi
+				done	
+
 			fi
 		;;
 
