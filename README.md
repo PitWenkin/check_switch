@@ -15,7 +15,7 @@ Used to check switches  from
   -h [snmp hostname]	Hostname
   -c [community name]	community name (ex: public)
   -p [snmp port]	port for snmp request (default: 161)
-  -P [port]		port to check
+  -P [port]		port(s) to check, seperated by ","
   -n [number of ports]	number of physical ports on device
   -o [options]		additional options
     d				only ports that are down (or anything except up)
@@ -34,4 +34,5 @@ Used to check switches  from
   ./check_switch -h 1.2.3.4 -p 4321 -c public -s uptime -t 30
   ./check_switch -h 1.2.3.4 -c public -s ports -n 28
   ./check_switch -h 1.2.3.4 -c public -s port -P 1
+  ./check_switch -h 1.2.3.4 -c public -s port -P 1,25 #Check port 1 and 25
 ```
