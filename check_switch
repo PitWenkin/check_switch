@@ -12,7 +12,7 @@
 #	./check_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2023-02-20:  Version 1.6	\\ Pit Wenkin
+# 2023-02-20:  Version 1.7	\\ Pit Wenkin
 #
 ##
 
