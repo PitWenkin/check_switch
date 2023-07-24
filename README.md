@@ -1,9 +1,10 @@
 # Check Switch
-Nagios/Icinga script to check switches from NETGEAR or LANCOM
+Nagios/Icinga script to check switches from LANCOM, MIKROTIK, or NETGEAR
 
 Used to check switches  from
-- NETGEAR https://www.netgear.com
 - LANCOM https://www.lancom-systems.de
+- MIKROTIK https://www.mikrotik.com
+- NETGEAR https://www.netgear.com
 
 # Usage:
 ```
