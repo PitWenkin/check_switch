@@ -12,7 +12,7 @@
 #	./check_switch -h IP-ADDRESS -c SNMP-COMMUNITY -s STATUSCHECK
 #
 #
-# 2023-02-20:  Version 1.7	\\ Pit Wenkin
+# 2025-10-31:  Version 1.8	\\ Pit Wenkin
 #
 ##
 
@@ -279,6 +279,7 @@ else
 						portStatus=$(echo "$PORTSTATUS" | grep "$OID_IFOPERSTATUS.$((port)) " | cut -d "=" -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
 						portChange=$(echo "$PORTSTATUS" | grep "$OID_IFLASTCHANGE.$((port)) " | tr -d '\n' | sed 's/.* = //g' | sed 's/"//g')
 						SYSUPTIME=$(echo "$PORTSTATUS" | grep $OID_SYSUPTIME | sed 's/.* = //g' | sed 's/"//g')
+						thisReturn=$STATE_UNKNOWN;
 						case $portStatus in
 							"1") portText="Up";			thisReturn=$STATE_OK;;
 							"2") portText="Down";			thisReturn=$STATE_CRITICAL;;
